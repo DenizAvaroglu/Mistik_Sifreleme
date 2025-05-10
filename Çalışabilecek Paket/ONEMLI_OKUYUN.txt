@@ -49,6 +49,7 @@ kodda "utf-8" encoding olduğundan emin olun.
 2. Sık Karşılaşılan Hatalar:
    a) "PyQt5 modülü bulunamadı" hatası:
       - Calistir.bat dosyasını yönetici olarak çalıştırın
+      - Veya komut isteminde: pip install PyQt5==5.15.9
 
    b) "WinRAR bulunamadı" hatası:
       - WinRAR'ı varsayılan konuma kurun
