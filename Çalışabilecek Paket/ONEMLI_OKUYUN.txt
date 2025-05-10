@@ -37,3 +37,49 @@ Bu uygulamayı çalıştırmadan önce aşağıdaki adımları izleyin:
 
 NOT: Türkçe karakter sorunu yaşarsanız, SifrelemeHVS.py dosyasındaki 
 kodda "utf-8" encoding olduğundan emin olun. 
+
+ÖNEMLİ BİLGİLER VE SORUN GİDERME
+===============================
+
+1. Program Gereksinimleri:
+   - Python 3.8 veya üstü
+   - PyQt5 5.15.9
+   - WinRAR (C:\Program Files\WinRAR konumunda)
+
+2. Sık Karşılaşılan Hatalar:
+   a) "PyQt5 modülü bulunamadı" hatası:
+      - Calistir.bat dosyasını yönetici olarak çalıştırın
+
+   b) "WinRAR bulunamadı" hatası:
+      - WinRAR'ı varsayılan konuma kurun
+      - Veya programı kapatıp WinRAR'ı kurduktan sonra tekrar açın
+
+   c) Türkçe karakter sorunu:
+      - Windows'ta Türkçe dil paketinin kurulu olduğundan emin olun
+      - Programı yönetici olarak çalıştırın
+
+3. Şifreleme İşlemi:
+   - Metin en az 2 karakter olmalıdır
+   - Sayı değeri, seçilen dereceye göre minimum değerden büyük olmalıdır
+   - Başlık boş bırakılamaz
+
+4. Çözme İşlemi:
+   - Dosya adı formatı: [SatırSayısı][ElementHarf][Derece],[BAST],[SatırSayısı]_[Başlık].rar
+   - Örnek: 3T90,1288-1968-2793-1391-1995,3_ProjeOrnegi.rar
+
+5. Güvenlik Notları:
+   - Şifreli dosyaları güvenli bir yerde saklayın
+   - BAST değerlerini ve şifreleri kimseyle paylaşmayın
+   - Programı güvenilir kaynaklardan indirin
+
+6. Performans İpuçları:
+   - Büyük metinler için işlem biraz zaman alabilir
+   - Program çalışırken başka ağır programlar çalıştırmayın
+   - Yeterli disk alanı olduğundan emin olun
+
+7. İletişim ve Destek:
+   - Sorun yaşarsanız hata mesajını not alın
+   - Programı kapatıp tekrar açmayı deneyin
+   - Gerekirse bilgisayarı yeniden başlatın
+
+Not: Bu program sadece eğitim amaçlıdır. Önemli verilerinizi şifrelerken ek güvenlik önlemleri alın. 

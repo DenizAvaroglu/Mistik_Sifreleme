@@ -213,19 +213,26 @@ class SifrelemeFormu(QMainWindow):
             QMessageBox.warning(self, "Uyarı", "Metin en az 2 karakter olmalıdır!")
             return
         
+        print(f"DEBUG: Metin dönüşümü başladı - Orijinal metin: {metin}")
+        
         # 1. Adım: Metni bir son bir baş şeklinde düzenle
         duzenlenmis_metin = self.bir_son_bir_bas(metin)
+        print(f"DEBUG: 1. Adım - Bir son bir baş: {duzenlenmis_metin}")
         
         # 2. Adım: Metni satırlara böl
         satirlar = self.metni_satirlara_bol(duzenlenmis_metin, satir_sayisi)
+        print(f"DEBUG: 2. Adım - Satırlara bölünmüş: {satirlar}")
         
         # 3. Adım: Her satırı kendi içinde bir son bir baş şeklinde düzenle
         son_satirlar = []
-        for satir in satirlar:
-            son_satirlar.append(self.bir_son_bir_bas(satir))
+        for i, satir in enumerate(satirlar):
+            duzenlenmis_satir = self.bir_son_bir_bas(satir)
+            son_satirlar.append(duzenlenmis_satir)
+            print(f"DEBUG: 3. Adım - Satır {i+1} dönüştürüldü: {satir} -> {duzenlenmis_satir}")
         
         # 4. Adım: Satırları birleştir
         son_metin = ''.join(son_satirlar)
+        print(f"DEBUG: 4. Adım - Son metin: {son_metin}")
         
         # Sonucu Rich Text Box'a yaz
         self.rich_text.setPlainText(son_metin)
@@ -360,6 +367,9 @@ class SifrelemeFormu(QMainWindow):
             ebced_metin = self.sayi_ebced_donusumu(deger)
             ebced_sifre += str(deger) + ebced_metin
         
+        # BAST dönüşümü hesapla
+        bast_deger = self.bast_donusumu(sayi)
+        
         # WinRAR için şifreyi düzenle - sadece alfanumerik ve sayılar kalsın
         rar_sifre = ''.join(karakter for karakter in ebced_sifre if karakter.isalnum())
         if not rar_sifre:
@@ -369,9 +379,9 @@ class SifrelemeFormu(QMainWindow):
         sonuc_metin = f"RAR Şifresi: {rar_sifre}"
         self.sonuc_text.setText(sonuc_metin)
         
-        # Dosya adı oluşturma - YENİ FORMAT: [SatırSayısı][ElementHarf][Derece],[Sayı]_[Başlık]
+        # Dosya adı oluşturma - FORMAT: [SatırSayısı][ElementHarf][Derece],[BAST],[SatırSayısı]_[Başlık]
         element_harf = element[0]
-        dosya_adi = f"{satir_sayisi}{element_harf}{derece},{sayi}_{baslik}"
+        dosya_adi = f"{satir_sayisi}{element_harf}{derece},{bast_deger},{satir_sayisi}_{baslik}"
         
         # Masaüstü yolu
         try:
@@ -401,7 +411,7 @@ class SifrelemeFormu(QMainWindow):
         os.makedirs(temp_dir, exist_ok=True)
         
         # Metni şifrelemek için Base64 kullanıyoruz ve yapılan tüm işlem bilgilerini ekliyoruz
-        metadata = f"SATIR:{satir_sayisi}\nELEMENT:{element}\nDERECE:{derece}\nSAYI:{sayi}\nALTERNATIF_SIFRE:{ebced_sifre}\n"
+        metadata = f"SATIR:{satir_sayisi}\nELEMENT:{element}\nDERECE:{derece}\nSAYI:{sayi}\nALTERNATIF_SIFRE:{ebced_sifre}\nBAST_DEGER:{bast_deger}\n"
         encoded_data = base64.b64encode((metadata + metin).encode('utf-8')).decode('utf-8')
         
         txt_yolu = os.path.join(temp_dir, f"{baslik}.txt")
@@ -469,19 +479,50 @@ class SifrelemeFormu(QMainWindow):
                 self.bilgi_label.setText("Dosya adı formatı uygun değil! Format: [SatırSayısı][ElementHarfi][Derece],[Sayı]_[Başlık].rar")
     
     def dosya_bilgilerini_al(self, dosya_yolu):
-        """Dosya adından satır sayısı, element, derece ve sayı bilgilerini çıkarır"""
+        """Dosya adından bilgileri çıkarır"""
         try:
+            print(f"DEBUG: Dosya çözümlemesi başladı: {dosya_yolu}")
+            # Dosyanın sadece adını al (uzantısız)
             dosya_adi = os.path.basename(dosya_yolu)
-            dosya_adi = os.path.splitext(dosya_adi)[0]  # .rar uzantısını kaldır
+            dosya_adi = os.path.splitext(dosya_adi)[0]  # Uzantıyı kaldır
+            print(f"DEBUG: Dosya adı (uzantısız): {dosya_adi}")
             
-            # Dosya adından elementi, dereceyi ve sayıyı al
-            if len(dosya_adi) > 0:
-                # İlk rakam satır sayısı
-                if not dosya_adi[0].isdigit():
+            # İlk olarak _ karakterine göre ayır (başlığı ayır)
+            parcalar = dosya_adi.split("_", 1)
+            if len(parcalar) < 1:
+                print("DEBUG: Dosya adında _ karakteri bulunamadı")
+                return None
+                
+            bilgi_kismi = parcalar[0]
+            print(f"DEBUG: Bilgi kısmı: {bilgi_kismi}")
+            
+            # Virgüllere göre parçalara ayır
+            virgul_parcalari = bilgi_kismi.split(",")
+            if len(virgul_parcalari) < 3:  # En az 3 virgül olmalı
+                print(f"DEBUG: Bilgi kısmında yeterli virgül bulunamadı: {len(virgul_parcalari)} adet var, en az 3 olmalı")
+                return None
+            
+            # Format: [SatırSayısı][ElementHarf][Derece],[BAST],[SatırSayısı]
+            # İlk kısım: 3T90 gibi
+            ilk_kisim = virgul_parcalari[0]
+            # İkinci kısım: BAST değeri
+            bast_str = virgul_parcalari[1]
+            # Üçüncü kısım: Satır sayısı
+            satir_sayisi_str = virgul_parcalari[2]
+            
+            print(f"DEBUG: İlk kısım: {ilk_kisim}, BAST: {bast_str}, Satır: {satir_sayisi_str}")
+            
+            # İlk kısımdan satır sayısı, element ve dereceyi çıkar
+            if len(ilk_kisim) >= 3:  # En azından "1A30" gibi bir format olmalı
+                # İlk karakter satır sayısı
+                try:
+                    satir_sayisi = int(ilk_kisim[0])
+                except ValueError:
+                    print(f"DEBUG: Satır sayısı çıkarılamadı: {ilk_kisim[0]}")
                     return None
-                    
-                satir_sayisi = int(dosya_adi[0])
-                element_harf = dosya_adi[1].upper() if len(dosya_adi) > 1 else None
+                
+                # İkinci karakter element harfi
+                element_harf = ilk_kisim[1].upper()
                 
                 # Element belirleme
                 element = None
@@ -493,33 +534,84 @@ class SifrelemeFormu(QMainWindow):
                     element = "Toprak"
                 elif element_harf == "H":
                     element = "Hava"
+                else:
+                    print(f"DEBUG: Geçersiz element harfi: {element_harf}")
+                    return None
                 
-                # Derece ve sayı alma
-                if "," in dosya_adi:
-                    parts = dosya_adi.split(",")
-                    if len(parts) > 1:
-                        # İlk kısımdan derece al
-                        derece_str = ""
-                        for char in parts[0][2:]:  # Satır ve element harfini atla
-                            if char.isdigit():
-                                derece_str += char
-                            else:
-                                break
-                        
-                        # İkinci kısımdan sayı al
-                        ikinci_kisim = parts[1]
-                        if "_" in ikinci_kisim:
-                            sayi_str = ikinci_kisim.split("_")[0]
-                            try:
-                                derece = int(derece_str) if derece_str else 0
-                                sayi = int(sayi_str) if sayi_str else 0
-                                return satir_sayisi, element, derece, sayi
-                            except ValueError:
-                                pass
-            
-            return None
+                # Geri kalan kısım derece
+                derece_str = ilk_kisim[2:]
+                try:
+                    derece = int(derece_str)
+                except ValueError:
+                    print(f"DEBUG: Derece çıkarılamadı: {derece_str}")
+                    return None
+                
+                # BAST değerinden sayıyı çıkar
+                try:
+                    # BAST değerlerini parçalara ayır
+                    bast_parcalari = bast_str.split("-")
+                    bast_parcalari = [p.strip() for p in bast_parcalari if p.strip()]
+                    
+                    # BAST değerlerini çöz ve topla
+                    toplam_deger = 0
+                    if len(bast_parcalari) == 4:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + sayi_dort
+                    elif len(bast_parcalari) == 5:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        sayi_bes = self.get_bast_value(bast_parcalari[4])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * sayi_bes)
+                    elif len(bast_parcalari) == 6:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        sayi_bes = self.get_bast_value(bast_parcalari[4])
+                        sayi_alti = self.get_bast_value(bast_parcalari[5])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * (sayi_bes + sayi_alti))
+                    elif len(bast_parcalari) == 7:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        sayi_bes = self.get_bast_value(bast_parcalari[4])
+                        sayi_alti = self.get_bast_value(bast_parcalari[5])
+                        sayi_yedi = self.get_bast_value(bast_parcalari[6])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * (sayi_bes + sayi_alti + sayi_yedi))
+                    else:
+                        # Diğer durumlar için basit toplama yap
+                        for bast_deger in bast_parcalari:
+                            orijinal_deger = self.get_bast_value(bast_deger)
+                            toplam_deger += orijinal_deger
+                    
+                    sayi = toplam_deger
+                    print(f"DEBUG: BAST değerleri çözüldü. Toplam: {sayi}")
+                except Exception as e:
+                    print(f"DEBUG: BAST değeri çözülemedi: {bast_str}, Hata: {e}")
+                    return None
+                
+                # Dosya adındaki satır sayısını kontrol et
+                try:
+                    dosya_satir_sayisi = int(satir_sayisi_str)
+                    if dosya_satir_sayisi != satir_sayisi:
+                        print(f"DEBUG: Uyarı: Dosya adındaki satır sayıları eşleşmiyor: {satir_sayisi} vs {dosya_satir_sayisi}")
+                except ValueError:
+                    print(f"DEBUG: Dosya satır sayısı çıkarılamadı: {satir_sayisi_str}")
+                
+                print(f"DEBUG: Dosya bilgileri başarıyla çıkarıldı. Satır: {satir_sayisi}, Element: {element}, Derece: {derece}, Sayı: {sayi}")
+                return satir_sayisi, element, derece, sayi
+            else:
+                print(f"DEBUG: İlk kısımda yeterli bilgi yok: {ilk_kisim}")
+                return None
+                
         except Exception as e:
-            print(f"Dosya bilgilerini çıkarırken hata: {e}")
+            print(f"DEBUG: Dosya bilgisi çıkarma hatası: {e}")
             return None
     
     def otomatik_coz(self):
@@ -620,7 +712,9 @@ class SifrelemeFormu(QMainWindow):
                 
                 lines = decoded_content.split('\n')
                 for i, line in enumerate(lines):
-                    if line.startswith("SATIR:") or line.startswith("ELEMENT:") or line.startswith("DERECE:") or line.startswith("SAYI:") or line.startswith("ALTERNATIF_SIFRE:"):
+                    if (line.startswith("SATIR:") or line.startswith("ELEMENT:") or 
+                        line.startswith("DERECE:") or line.startswith("SAYI:") or 
+                        line.startswith("ALTERNATIF_SIFRE:") or line.startswith("BAST_DEGER:")):
                         metadata_lines.append(line)
                         content_start_idx = i + 1
                     else:
@@ -636,13 +730,15 @@ class SifrelemeFormu(QMainWindow):
                         except:
                             pass
                 
-                # Metin içeriğini al
+                # Metin içeriğini al - metadata sonrası kalan kısım
                 sifreli_metin = '\n'.join(lines[content_start_idx:])
+                print(f"DEBUG: Çözülecek metin: {sifreli_metin}")
                 
                 # Satır bilgisi varsa kullan, yoksa dosya adından alınan değeri kullan
                 kullanilacak_satir = satir_bilgisi if satir_bilgisi is not None else satir_sayisi
+                print(f"DEBUG: Kullanılacak satır sayısı: {kullanilacak_satir}")
                 
-                # Metni satır sayısına göre düzelt
+                # Metni satır sayısına göre düzelt - ŞifrelemeHVS.py kodundaki mantık ile
                 cozulmus_metin = self.metni_tersine_cevir(sifreli_metin, kullanilacak_satir)
                 
                 # Alternatif şifreyi al
@@ -729,7 +825,7 @@ class SifrelemeFormu(QMainWindow):
                 siralama = [7, 0, 5, 2, 4, 6, 3, 8, 1]  # 8,1,6,3,5,7,4,9,2
             else:  # Su
                 siralama = [5, 6, 1, 0, 4, 8, 7, 2, 3]  # 6,7,2,1,5,9,8,3,4
-                
+            
             for idx in siralama:
                 if idx < len(sayilar):
                     sifreli_sayilar.append(str(sayilar[idx]))
@@ -762,24 +858,31 @@ class SifrelemeFormu(QMainWindow):
             if len(metin) < 2:
                 return metin
             
+            print(f"DEBUG: Çözümleme başladı - Şifreli metin: {metin}")
+            
             # Adım 1: Metni satırlara böl
             satirlar = self.metni_satirlara_bol(metin, satir_sayisi)
+            print(f"DEBUG: Adım 1 - Satırlara bölündü: {satirlar}")
             
             # Adım 2: Her satırı ayrı ayrı ter çevir (bir son bir baş işleminin tersi)
             ara_satirlar = []
-            for satir in satirlar:
-                ara_satirlar.append(self.bir_son_bir_bas_tersi(satir))
+            for i, satir in enumerate(satirlar):
+                ters_satir = self.bir_son_bir_bas_tersi(satir)
+                ara_satirlar.append(ters_satir)
+                print(f"DEBUG: Adım 2 - Satır {i+1} ters çevrildi: {satir} -> {ters_satir}")
                 
             # Adım 3: Ara sonucu birleştir
             ara_sonuc = ''.join(ara_satirlar)
+            print(f"DEBUG: Adım 3 - Birleştirildi: {ara_sonuc}")
             
             # Adım 4: Tüm metni tekrar ter çevirme (bir son bir baş işleminin tersi)
             sonuc = self.bir_son_bir_bas_tersi(ara_sonuc)
+            print(f"DEBUG: Adım 4 - Final sonuç: {sonuc}")
             
             return sonuc
             
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Metin düzeltme hatası: {e}")
+            print(f"DEBUG: Metin düzeltme hatası: {e}")
             return metin
     
     def bir_son_bir_bas_tersi(self, metin):
@@ -892,6 +995,248 @@ class SifrelemeFormu(QMainWindow):
             sonuc = f"{self.ucbasamak(self.ebced_hesapla(yuzbinler), True)}{self.ucbasamak(self.ebced_hesapla(onbinler), True)}{self.ucbasamak(self.ebced_hesapla(binler), False)}{self.ucbasamak(self.ebced_hesapla(1000), True)}{self.ucbasamak(self.ebced_hesapla(yuzler), True)}{self.ucbasamak(self.ebced_hesapla(onlar), True)}{self.ucbasamak(self.ebced_hesapla(birler), False)}in"
         
         return sonuc
+
+    def bast_hesaplayici4(self, deger):
+        """BAST 4 tablosunda sayıyı değerine dönüştürür"""
+        bast4_map = {
+            1: "1641", 2: "1046", 3: "451", 4: "1995", 5: "1783", 
+            6: "1832", 7: "1980", 8: "1288", 9: "1616",
+            10: "2243", 20: "1968", 30: "1086", 40: "2439", 50: "1843", 
+            60: "1748", 70: "1997", 80: "1843", 90: "2513",
+            100: "1309", 200: "2447", 300: "1591", 400: "3313", 500: "2793", 
+            600: "2088", 700: "1777", 800: "506", 900: "2627",
+            1000: "1391"
+        }
+        return bast4_map.get(deger, "")
+
+    def bast_hesaplayici5(self, deger):
+        """BAST 5 tablosunda sayıyı değerine dönüştürür"""
+        bast5_map = {
+            1: "991", 2: "921", 3: "1118", 4: "2011", 5: "2007", 
+            6: "2482", 7: "1364", 8: "1889", 9: "1683",
+            10: "2616", 20: "1842", 30: "1239", 40: "2703", 50: "2149", 
+            60: "1260", 70: "1443", 80: "2148", 90: "3113",
+            100: "1749", 200: "1547", 300: "1488", 400: "3870", 500: "2561", 
+            600: "1999", 700: "647", 800: "1231", 900: "2028",
+            1000: "1820"
+        }
+        return bast5_map.get(deger, "")
+
+    def get_bast_value(self, bast_deger):
+        """BAST değerini orijinal sayıya çevirir"""
+        bast_map = {
+            # 4'lü BAST değerleri
+            "1641": 1, "1046": 2, "451": 3, "1995": 4, "1783": 5,
+            "1832": 6, "1980": 7, "1288": 8, "1616": 9,
+            "2243": 10, "1968": 20, "1086": 30, "2439": 40, "1843": 50,
+            "1748": 60, "1997": 70, "2513": 90,
+            "1309": 100, "2447": 200, "1591": 300, "3313": 400, "2793": 500,
+            "2088": 600, "1777": 700, "506": 800, "2627": 900,
+            "1391": 1000,
+            
+            # 5'li BAST değerleri
+            "991": 1, "921": 2, "1118": 3, "2011": 4, "2007": 5,
+            "2482": 6, "1364": 7, "1889": 8, "1683": 9,
+            "2616": 10, "1842": 20, "1239": 30, "2703": 40, "2149": 50,
+            "1260": 60, "1443": 70, "2148": 80, "3113": 90,
+            "1749": 100, "1547": 200, "1488": 300, "3870": 400, "2561": 500,
+            "1999": 600, "647": 700, "1231": 800, "2028": 900,
+            "1820": 1000
+        }
+        return bast_map.get(bast_deger, 0)
+        
+    def bast_donusumu(self, sayi):
+        """Sayıyı BAST formatına dönüştürür, basamak tabanlı"""
+        try:
+            print(f"DEBUG: BAST dönüşümü başladı: {sayi}")
+            sayi_str = str(sayi)
+            
+            # Basamaklara ayır
+            if sayi < 100:
+                # 10-99 arası
+                birler = sayi % 10
+                onlar = (sayi % 100) - birler
+                
+                # Çift/çift durumları kontrol et
+                if birler in [2, 4, 6] or onlar in [20, 40, 60]:
+                    # 4'lü BAST kullan
+                    sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}"
+                else:
+                    # 5'li BAST kullan
+                    sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}"
+                
+            elif sayi < 1000:
+                # 100-999 arası
+                birler = sayi % 10
+                onlar = (sayi % 100) - birler
+                yuzler = (sayi % 1000) - (birler + onlar)
+                
+                # Çift/çift durumları kontrol et
+                if birler in [2, 4, 6] or onlar in [20, 40, 60] or yuzler in [200, 400, 600, 800]:
+                    # 4'lü BAST kullan
+                    sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}"
+                else:
+                    # 5'li BAST kullan
+                    sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}"
+                
+            elif sayi >= 1000 and sayi < 10000:
+                # 1000-9999 arası
+                birler = sayi % 10
+                onlar = (sayi % 100) - birler
+                yuzler = (sayi % 1000) - (birler + onlar)
+                bin = 1000
+                binler = ((sayi % 10000) - (yuzler + onlar + birler)) // 1000
+                
+                # Çift/çift durumları kontrol et
+                if birler in [2, 4, 6] or onlar in [20, 40, 60] or yuzler in [200, 400, 600, 800]:
+                    # 4'lü BAST kullan
+                    if binler == 1:
+                        sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}-{self.bast_hesaplayici4(bin)}"
+                    else:
+                        sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}-{self.bast_hesaplayici4(bin)}-{self.bast_hesaplayici4(binler)}"
+                else:
+                    # 5'li BAST kullan
+                    if binler == 1:
+                        sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}-{self.bast_hesaplayici5(bin)}"
+                    else:
+                        sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}-{self.bast_hesaplayici5(bin)}-{self.bast_hesaplayici5(binler)}"
+                
+            elif sayi >= 10000 and sayi < 100000:
+                # 10000-99999 arası
+                birler = sayi % 10
+                onlar = (sayi % 100) - birler
+                yuzler = (sayi % 1000) - (birler + onlar)
+                bin = 1000
+                binler = ((sayi % 10000) - (yuzler + onlar + birler)) // 1000
+                onbinler = ((sayi % 100000) - (sayi % 10000)) // 10000
+                
+                # Çift/çift durumları kontrol et
+                if birler in [2, 4, 6] or onlar in [20, 40, 60] or yuzler in [200, 400, 600, 800]:
+                    # 4'lü BAST kullan
+                    if binler == 1:
+                        sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}-{self.bast_hesaplayici4(bin)}-{self.bast_hesaplayici4(onbinler)}"
+                    else:
+                        sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}-{self.bast_hesaplayici4(bin)}-{self.bast_hesaplayici4(binler)}-{self.bast_hesaplayici4(onbinler)}"
+                else:
+                    # 5'li BAST kullan
+                    if binler == 1:
+                        sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}-{self.bast_hesaplayici5(bin)}-{self.bast_hesaplayici5(onbinler)}"
+                    else:
+                        sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}-{self.bast_hesaplayici5(bin)}-{self.bast_hesaplayici5(binler)}-{self.bast_hesaplayici5(onbinler)}"
+            
+            else:
+                # 100000 ve üzeri
+                birler = sayi % 10
+                onlar = (sayi % 100) - birler
+                yuzler = (sayi % 1000) - (birler + onlar)
+                bin = 1000
+                binler = ((sayi % 10000) - (yuzler + onlar + birler)) // 1000
+                onbinler = ((sayi % 100000) - (sayi % 10000)) // 10000
+                yuzbinler = ((sayi % 1000000) - (sayi % 100000)) // 100000
+                
+                # Çift/çift durumları kontrol et
+                if birler in [2, 4, 6] or onlar in [20, 40, 60] or yuzler in [200, 400, 600, 800]:
+                    # 4'lü BAST kullan
+                    if binler == 1:
+                        sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}-{self.bast_hesaplayici4(bin)}-{self.bast_hesaplayici4(onbinler)}-{self.bast_hesaplayici4(yuzbinler)}"
+                    else:
+                        sonuc = f"{self.bast_hesaplayici4(birler)}-{self.bast_hesaplayici4(onlar)}-{self.bast_hesaplayici4(yuzler)}-{self.bast_hesaplayici4(bin)}-{self.bast_hesaplayici4(binler)}-{self.bast_hesaplayici4(onbinler)}-{self.bast_hesaplayici4(yuzbinler)}"
+                else:
+                    # 5'li BAST kullan
+                    if binler == 1:
+                        sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}-{self.bast_hesaplayici5(bin)}-{self.bast_hesaplayici5(onbinler)}-{self.bast_hesaplayici5(yuzbinler)}"
+                    else:
+                        sonuc = f"{self.bast_hesaplayici5(birler)}-{self.bast_hesaplayici5(onlar)}-{self.bast_hesaplayici5(yuzler)}-{self.bast_hesaplayici5(bin)}-{self.bast_hesaplayici5(binler)}-{self.bast_hesaplayici5(onbinler)}-{self.bast_hesaplayici5(yuzbinler)}"
+            
+            # Boş değerleri temizle
+            sonuc_parcalar = [p for p in sonuc.split("-") if p]
+            sonuc = "-".join(sonuc_parcalar)
+            
+            print(f"DEBUG: BAST sonucu: {sonuc}")
+            return sonuc
+            
+        except Exception as e:
+            print(f"BAST dönüşümünde hata: {e}")
+            return str(sayi)
+
+    def bast_coz(self, bast_str):
+        """BAST formatındaki sayıları çözer ve orijinal değere dönüştürür"""
+        try:
+            print(f"DEBUG: BAST çözümleme başladı: {bast_str}")
+            
+            # Başta veya sonda boşluk varsa temizle
+            bast_str = bast_str.strip()
+            
+            # Başta tire (-) işareti varsa kaldır
+            if bast_str.startswith("-"):
+                bast_str = bast_str[1:]
+                print(f"DEBUG: Başındaki tire kaldırıldı: {bast_str}")
+            
+            # Sayıları - işaretine göre ayır
+            sayilar = bast_str.split("-")
+            sayilar = [s for s in sayilar if s.strip()]  # Boş olanları kaldır
+            print(f"DEBUG: BAST parçaları: {sayilar}")
+            
+            # Toplam değer
+            toplam_deger = 0
+            
+            # Sayılar listesinin uzunluğuna göre işlem yap
+            if len(sayilar) == 4:
+                sayi_bir = self.get_bast_value(sayilar[0])
+                sayi_iki = self.get_bast_value(sayilar[1])
+                sayi_uc = self.get_bast_value(sayilar[2])
+                sayi_dort = self.get_bast_value(sayilar[3])
+                toplam_deger = sayi_bir + sayi_iki + sayi_uc + sayi_dort
+                print(f"DEBUG: 4 değerli BAST çözümleme: {sayi_bir} + {sayi_iki} + {sayi_uc} + {sayi_dort} = {toplam_deger}")
+                
+            elif len(sayilar) == 5:
+                sayi_bir = self.get_bast_value(sayilar[0])
+                sayi_iki = self.get_bast_value(sayilar[1])
+                sayi_uc = self.get_bast_value(sayilar[2])
+                sayi_dort = self.get_bast_value(sayilar[3])
+                sayi_bes = self.get_bast_value(sayilar[4])
+                toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * sayi_bes)
+                print(f"DEBUG: 5 değerli BAST çözümleme: {sayi_bir} + {sayi_iki} + {sayi_uc} + ({sayi_dort} * {sayi_bes}) = {toplam_deger}")
+                
+            elif len(sayilar) == 6:
+                sayi_bir = self.get_bast_value(sayilar[0])
+                sayi_iki = self.get_bast_value(sayilar[1])
+                sayi_uc = self.get_bast_value(sayilar[2])
+                sayi_dort = self.get_bast_value(sayilar[3])
+                sayi_bes = self.get_bast_value(sayilar[4])
+                sayi_alti = self.get_bast_value(sayilar[5])
+                toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * (sayi_bes + sayi_alti))
+                print(f"DEBUG: 6 değerli BAST çözümleme: {sayi_bir} + {sayi_iki} + {sayi_uc} + ({sayi_dort} * ({sayi_bes} + {sayi_alti})) = {toplam_deger}")
+                
+            elif len(sayilar) == 7:
+                sayi_bir = self.get_bast_value(sayilar[0])
+                sayi_iki = self.get_bast_value(sayilar[1])
+                sayi_uc = self.get_bast_value(sayilar[2])
+                sayi_dort = self.get_bast_value(sayilar[3])
+                sayi_bes = self.get_bast_value(sayilar[4])
+                sayi_alti = self.get_bast_value(sayilar[5])
+                sayi_yedi = self.get_bast_value(sayilar[6])
+                toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * (sayi_bes + sayi_alti + sayi_yedi))
+                print(f"DEBUG: 7 değerli BAST çözümleme: {sayi_bir} + {sayi_iki} + {sayi_uc} + ({sayi_dort} * ({sayi_bes} + {sayi_alti} + {sayi_yedi})) = {toplam_deger}")
+                
+            else:
+                # Diğer durumlar için basit toplama yap
+                for sayi in sayilar:
+                    try:
+                        bast_deger = sayi.strip()
+                        if bast_deger:
+                            orijinal_deger = self.get_bast_value(bast_deger)
+                            toplam_deger += orijinal_deger
+                            print(f"DEBUG: BAST değeri {bast_deger} -> {orijinal_deger}")
+                    except ValueError as e:
+                        print(f"DEBUG: BAST değeri dönüştürülemedi: {sayi}, Hata: {e}")
+            
+            print(f"DEBUG: BAST çözümleme tamamlandı. Sonuç: {toplam_deger}")
+            return toplam_deger
+            
+        except Exception as e:
+            print(f"DEBUG: BAST çözümlemesinde hata: {e}")
+            return 0
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -379,9 +379,9 @@ class SifrelemeFormu(QMainWindow):
         sonuc_metin = f"RAR Şifresi: {rar_sifre}"
         self.sonuc_text.setText(sonuc_metin)
         
-        # Dosya adı oluşturma - FORMAT: [SatırSayısı][ElementHarf][Derece],[Sayı],[BAST],[SatırSayısı]_[Başlık]
+        # Dosya adı oluşturma - FORMAT: [SatırSayısı][ElementHarf][Derece],[BAST],[SatırSayısı]_[Başlık]
         element_harf = element[0]
-        dosya_adi = f"{satir_sayisi}{element_harf}{derece},{sayi},{bast_deger},{satir_sayisi}_{baslik}"
+        dosya_adi = f"{satir_sayisi}{element_harf}{derece},{bast_deger},{satir_sayisi}_{baslik}"
         
         # Masaüstü yolu
         try:
@@ -498,21 +498,19 @@ class SifrelemeFormu(QMainWindow):
             
             # Virgüllere göre parçalara ayır
             virgul_parcalari = bilgi_kismi.split(",")
-            if len(virgul_parcalari) < 4:
-                print(f"DEBUG: Bilgi kısmında yeterli virgül bulunamadı: {len(virgul_parcalari)} adet var, en az 4 olmalı")
+            if len(virgul_parcalari) < 3:  # En az 3 virgül olmalı
+                print(f"DEBUG: Bilgi kısmında yeterli virgül bulunamadı: {len(virgul_parcalari)} adet var, en az 3 olmalı")
                 return None
             
-            # Format: [SatırSayısı][ElementHarf][Derece],[Sayı],[BAST],[SatırSayısı]
-            # İlk kısım: 3T30 gibi
+            # Format: [SatırSayısı][ElementHarf][Derece],[BAST],[SatırSayısı]
+            # İlk kısım: 3T90 gibi
             ilk_kisim = virgul_parcalari[0]
-            # İkinci kısım: Sayı
-            sayi_str = virgul_parcalari[1]
-            # Üçüncü kısım: BAST değeri
-            bast_str = virgul_parcalari[2]
-            # Dördüncü kısım: Satır sayısı
-            satir_sayisi_str = virgul_parcalari[3]
+            # İkinci kısım: BAST değeri
+            bast_str = virgul_parcalari[1]
+            # Üçüncü kısım: Satır sayısı
+            satir_sayisi_str = virgul_parcalari[2]
             
-            print(f"DEBUG: İlk kısım: {ilk_kisim}, Sayı: {sayi_str}, BAST: {bast_str}, Satır: {satir_sayisi_str}")
+            print(f"DEBUG: İlk kısım: {ilk_kisim}, BAST: {bast_str}, Satır: {satir_sayisi_str}")
             
             # İlk kısımdan satır sayısı, element ve dereceyi çıkar
             if len(ilk_kisim) >= 3:  # En azından "1A30" gibi bir format olmalı
@@ -548,14 +546,56 @@ class SifrelemeFormu(QMainWindow):
                     print(f"DEBUG: Derece çıkarılamadı: {derece_str}")
                     return None
                 
-                # Sayıyı çıkar
+                # BAST değerinden sayıyı çıkar
                 try:
-                    sayi = int(sayi_str)
-                except ValueError:
-                    print(f"DEBUG: Sayı çıkarılamadı: {sayi_str}")
+                    # BAST değerlerini parçalara ayır
+                    bast_parcalari = bast_str.split("-")
+                    bast_parcalari = [p.strip() for p in bast_parcalari if p.strip()]
+                    
+                    # BAST değerlerini çöz ve topla
+                    toplam_deger = 0
+                    if len(bast_parcalari) == 4:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + sayi_dort
+                    elif len(bast_parcalari) == 5:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        sayi_bes = self.get_bast_value(bast_parcalari[4])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * sayi_bes)
+                    elif len(bast_parcalari) == 6:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        sayi_bes = self.get_bast_value(bast_parcalari[4])
+                        sayi_alti = self.get_bast_value(bast_parcalari[5])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * (sayi_bes + sayi_alti))
+                    elif len(bast_parcalari) == 7:
+                        sayi_bir = self.get_bast_value(bast_parcalari[0])
+                        sayi_iki = self.get_bast_value(bast_parcalari[1])
+                        sayi_uc = self.get_bast_value(bast_parcalari[2])
+                        sayi_dort = self.get_bast_value(bast_parcalari[3])
+                        sayi_bes = self.get_bast_value(bast_parcalari[4])
+                        sayi_alti = self.get_bast_value(bast_parcalari[5])
+                        sayi_yedi = self.get_bast_value(bast_parcalari[6])
+                        toplam_deger = sayi_bir + sayi_iki + sayi_uc + (sayi_dort * (sayi_bes + sayi_alti + sayi_yedi))
+                    else:
+                        # Diğer durumlar için basit toplama yap
+                        for bast_deger in bast_parcalari:
+                            orijinal_deger = self.get_bast_value(bast_deger)
+                            toplam_deger += orijinal_deger
+                    
+                    sayi = toplam_deger
+                    print(f"DEBUG: BAST değerleri çözüldü. Toplam: {sayi}")
+                except Exception as e:
+                    print(f"DEBUG: BAST değeri çözülemedi: {bast_str}, Hata: {e}")
                     return None
                 
-                # BAST değerini çıkar (sadece kayıt için, kullanmıyoruz)
                 # Dosya adındaki satır sayısını kontrol et
                 try:
                     dosya_satir_sayisi = int(satir_sayisi_str)
