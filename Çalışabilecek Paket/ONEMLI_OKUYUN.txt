@@ -1,0 +1,39 @@
+=============================================
+     ŞİFRELEME UYGULAMASI KULLANIM TALİMATLARI
+=============================================
+
+Sevgili Kullanıcı,
+
+Bu uygulamayı çalıştırmadan önce aşağıdaki adımları izleyin:
+
+1. PYTHON KURULUMU:
+   - Python 3.10 kurulu olmalıdır (https://www.python.org/downloads/)
+   - Kurulum sırasında "Add Python to PATH" seçeneğini işaretlediğinizden emin olun
+
+2. PyQt5 KURULUMU:
+   - PyQt5 modülünü yüklemek için şu YÖNTEMLERDEN BİRİNİ uygulayın:
+   
+   a) Çalıştır.bat dosyasına çift tıklayın - otomatik yükleme yapılacaktır
+      
+   b) Komut isteminde kendiniz yükleyin:
+      -> Windows PowerShell veya CMD açın
+      -> Şu komutu yazın:  pip install PyQt5==5.15.9
+      
+   c) Eğer yukarıdaki yöntemler çalışmazsa şu alternatif komutu deneyin:
+      pip install --index-url=https://download.qt.io/official_releases/QtForPython/ PyQt5==5.15.9
+
+3. WinRAR KURULUMU:
+   - WinRAR programı kurulu olmalıdır (https://www.win-rar.com/download.html)
+
+4. UYGULAMAYI ÇALIŞTIRMA:
+   - Tüm gereksinimler yüklendikten sonra "Calistir.bat" dosyasına çift tıklayarak
+     programı başlatabilirsiniz.
+
+5. SORUN GİDERME:
+   - Hata alırsanız, şu adımları deneyin:
+     a) Python'un PATH'e eklendiğinden emin olun
+     b) py veya python komutuyla Python'u çalıştırabildiğinizi doğrulayın
+     c) pip veya py -m pip komutunu kullanarak PyQt5 yükleyin
+
+NOT: Türkçe karakter sorunu yaşarsanız, SifrelemeHVS.py dosyasındaki 
+kodda "utf-8" encoding olduğundan emin olun. 

@@ -1,0 +1,22 @@
+=============================================
+     ŞİFRELEME UYGULAMASI KURULUM TALIMATLARI
+=============================================
+
+1. Python 3.10 veya üstü gereklidir. İndirmek için: https://www.python.org/downloads/
+
+2. PyQt5 modülünü yüklemek için aşağıdaki komutu çalıştırın:
+   - Windows Komut İstemi (cmd) açın
+   - Şu komutu yazın: pip install PyQt5==5.15.9
+
+3. WinRAR programının bilgisayarınızda kurulu olması gerekir.
+   - Kurulu değilse indirin ve kurun: https://www.win-rar.com/download.html
+
+4. Eğer PyQt5 kurulumu ile ilgili sorun yaşıyorsanız, alternatif olarak şu komutu kullanabilirsiniz:
+   pip install --index-url=https://download.qt.io/official_releases/QtForPython/ PyQt5==5.15.9
+
+5. Doğrudan çalıştırmak için:
+   - Calistir.bat dosyasına çift tıklayın VEYA
+   - Komut isteminde: python SifrelemeHVS.py
+
+NOT: Turkce karakter sorunu yasarsaniz, SifrelemeHVS.py dosyasindaki 
+kodda "utf-8" encoding olduguna emin olun. 
