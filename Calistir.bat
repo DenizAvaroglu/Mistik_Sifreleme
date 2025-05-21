@@ -1,10 +1,24 @@
 @echo off
-echo Şifreleme Uygulaması Başlatılıyor...
-echo Gerekli kütüphaneler kontrol ediliyor...
+echo Sifreleme Programi Kurulum ve Calistirma
+echo ========================================
+echo.
 
-python -m pip install -r requirements.txt
+REM Python'un kurulu olup olmadigini kontrol et
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo Python kurulu degil! Lutfen Python'u kurun.
+    echo https://www.python.org/downloads/
+    pause
+    exit
+)
 
-echo Uygulama başlatılıyor...
-python ŞifrelemeHVS.py
+REM Gerekli paketleri kur
+echo Gerekli paketler kuruluyor...
+pip install -r requirements.txt
+
+REM Programi calistir
+echo.
+echo Program baslatiliyor...
+python SifrelemeHVS.py
 
 pause 
